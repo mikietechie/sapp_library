@@ -1,0 +1,140 @@
+{% extends layout_template %}
+{% load static %}
+{% load sapp_filters %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+	{{system_title}} | SAPP Library | Dashboard
+{% endblock title %}
+
+{% block pageheadertitleh5 %}SAPP Library Dashboard{% endblock pageheadertitleh5 %}
+
+{% block maincol %}
+
+{% if member %}
+<div class="col-md-6 col-lg-4">
+    <div class="card">
+        <div class="card-body">
+            <div class="row align-items-center m-l-0">
+                <div class="col-auto">
+                    <i class="icon fas fa-user-astronaut fa-2x text-c-purple"></i>
+                </div>
+                <div class="col-auto">
+                    <h6 class="text-muted m-b-10 badge badge-light-primary">{{member.role}}</h6>
+                    <h2 class="m-b-0">{{member.user}}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+    
+
+<a href="/{% settings_value 'SAPP_URL' %}/module/sapp_library/" class="col-md-6 col-lg-4">
+    <div class="card">
+        <div class="card-body">
+            <div class="row align-items-center m-l-0">
+                <div class="col-auto">
+                    <i class="icon fas fa-database fa-2x text-c-purple"></i>
+                </div>
+                <div class="col-auto">
+                    <h6 class="text-muted m-b-10 badge badge-light-primary">Manage</h6>
+                    <h2 class="m-b-0">Library Data</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+</a>
+    
+
+<!-- <a href="/{% settings_value 'SAPP_URL' %}/sapp_library/invoice/" class="col-md-6 col-lg-4">
+    <div class="card">
+        <div class="card-body">
+            <div class="row align-items-center m-l-0">
+                <div class="col-auto">
+                    <i class="icon fas fa-file-invoice fa-2x text-c-purple"></i>
+                </div>
+                <div class="col-auto">
+                    <h6 class="text-muted m-b-10 badge badge-light-primary">Invoice</h6>
+                    <h2 class="m-b-0">Generate Invoices</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+</a> -->
+<div class="col-md-6">
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title">Genre Books</h5>
+        </div>
+        <div class="card-body">
+            <div id="genre-book-stats"></div>
+        </div>
+    </div>
+</div>
+
+
+    
+{% endblock maincol %}
+    
+{% block js %}
+{{ block.super }}
+<script src="{% static 'sapp_abelpro/assets/js/plugins/apexcharts.min.js' %}"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const headers = {'X-CSRFToken': '{{ csrf_token }}'}
+        const methodsBaseURL = `/{% settings_value 'SAPP_URL' %}/api/method/sapp_library/`
+        const setupGenreBookStats = () => {
+            const render = (data) => {
+                (
+                    new ApexCharts(
+                        document.querySelector("#genre-book-stats"),
+                        {
+                            chart: {
+                                height: 200,
+                                type: 'donut',
+                            },
+                            dataLabels: {
+                                enabled: false
+                            },
+                            plotOptions: {
+                                pie: {
+                                    donut: {
+                                        size: '65%'
+                                    }
+                                }
+                            },
+                            labels: Object.keys(data),
+                            series: Object.values(data),
+                            legend: {
+                                show: true,
+                                position: "top"
+                            },
+                        }
+                    )
+                ).render()
+            }
+            $.ajax({
+                url: `${methodsBaseURL}genre/get_genre_book_stats/`,
+                method: "POST",
+                headers: headers,
+                data: {},
+                success: (res) => {
+                    if (res?.data) {
+                        render(res.data)
+                    }
+                },
+                error: (error) => {
+                    alert(error.statusText)
+                    console.error(error)
+                }
+            })
+        }
+        try {
+            setupGenreBookStats()
+        } catch (_) {}
+        
+    })
+</script>
+    
+{% endblock js %}

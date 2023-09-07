@@ -1,0 +1,83 @@
+{% extends layout_template %}
+{% load static %}
+{% load sapp_filters %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+	{{system_title}} | SAPP Membership | Generate Invoices
+{% endblock title %}
+
+{% block pageheadertitleh5 %}SAPP Membership Generate Invoices{% endblock pageheadertitleh5 %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/{{user_root_url}}/"><i class="feather icon-home"></i></a></li>
+<li class="breadcrumb-item"><a href="/{{user_root_url}}/sapp_membership/"><i class="feather icon-command"></i></a></li>
+<li class="breadcrumb-item"><a href="#!"></a></li>
+{% endblock breadcrumb %}
+
+{% block maincol %}
+<div class="col-12">
+    <div class="card">
+        <div class="card-body">
+            <form method="post" id="generate-invoices-form">
+                {% csrf_token %}
+                <div class="form-row ">
+                    <div class="col-md-6">
+                        <div id="div_id_month" class="form-group">
+                            <label for="id_month" class=" requiredField">Month<span class="asteriskField">*</span> </label>
+                            <div>
+                                <input type="month" name="month" class="dateinput form-control" required="" id="id_month">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div id="div_id_scale" class="form-group">
+                            <label for="id_scale" class=" requiredField">Scale<span class="asteriskField">*</span></label>
+                            <div>
+                                <input type="number" name="scale" value="1" min="0" max="1000000" step="any" class="numberinput form-control" required="" id="id_scale"> 
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div id="div_id_details" class="form-group">
+                            <label for="id_details" class="">Details</label>
+                            <div>
+                                <textarea name="details" cols="40" rows="10" class="textarea form-control" id="id_details">Membership Fee Invoice for the month of ...</textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 mx-auto">
+                        <input type="submit" name="submit" value="Submit" class="btn btn-primary w-100 has-ripple" id="submit-id-submit">
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+    
+{% endblock maincol %}
+
+
+{% block js %}
+{{ block.super }}
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        $("#generate-invoices-form").submit((e) => {
+            e.preventDefault()
+            // const [month, scale, details] = [$("#id_month").val(), $("#id_scale").val(), $("#id_details").val()]
+            $.ajax({
+                ...window.ajaxPostOptions,
+                url: `/{% settings_value 'SAPP_URL' %}/api/method/sapp_membership/invoice/create_monthly_membership_invoices/`,
+                data: window.formToJSONStr("#generate-invoices-form"),
+                success: (res) => {
+                    alert(`Invoices (${res.data}) Generated Succssfully.`)
+                },
+                error: (error) => {
+                    alert(error.statusText)
+                }
+            })
+        })
+    })
+</script>
+{% endblock js %}
+    
