@@ -1,0 +1,21 @@
+# Local Files and compiled files
+*__pycache__*
+*.pyc
+*.sqlite3
+*.session.sql
+*.ipynb
+*.coverage
+# Development environment files and folders
+/.vscode/*
+/env
+*/**/node_modules
+*node_modules
+*/**/dev
+*dev
+/dev
+# Environment variable files and putty permission files
+*.pem
+/.env
+# Migrations
+*/**/migrations/0*
+*migrations/0*

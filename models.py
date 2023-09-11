@@ -51,11 +51,14 @@ class Member(SM):
 
 class Genre(SM):
     icon = "fas fa-folder"
-    list_field_names = ("id", "name")
+    list_field_names = ("id", "image", "name", "description")
     detail_field_names = list_field_names
     api_methods = ("get_genre_book_stats_api", )
 
     name = models.CharField(max_length=128)
+    description = models.TextField(max_length=512, blank=True, null=True)
+    image = ImageField()
+
 
     def __str__(self):
         return self.name
@@ -123,6 +126,7 @@ class BookItem(SM):
     icon = "fas fa-bookmark"
     list_field_names = ("id", "book", "code", "retired_on", "available")
     filter_field_names = ("book", "code", "condition", "retired_on", "available")
+    distinct_on_options = ("book",)
 
     has_notes = True
     confirm_delete = True
