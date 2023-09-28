@@ -27,15 +27,24 @@ class Member(SM):
     cols_css_class = cls.COL_MD6
     list_field_names = ("id", "full_name", "user", "role", "about")
     filter_field_names = ("active", "role")
+    api_methods = ("get_member_ctx_api", )
 
     ROLES = ("One", "Two")
 
-    user: models.ForeignKey[AbstractUser] = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="sapp_library_member_user", blank=True, null=True)
+    user: models.ForeignKey[AbstractUser] = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="sapp_library_member_user", blank=True, null=True)
     full_name = models.CharField(max_length=128, blank=True)
     role = models.CharField(max_length=16, choices=SM.iter_as_choices(*ROLES), default="One")
     active = models.BooleanField(default=True)
     about = models.TextField(max_length=512, blank=True, null=True)
     termination_reason = models.TextField(max_length=512, blank=True, null=True)
+    
+    @classmethod
+    def get_member_ctx_api(cls, request: Request, kwds: dict):
+        member = Member.objects.filter(user=request.user).first()
+        if not member:
+            return None
+        serializer_class = member.get_serializer(request, "__all__")
+        return serializer_class(instance=member).data
 
     def __str__(self):
         return f"{self.sm_str} {self.full_name}"
@@ -97,11 +106,13 @@ class BookType(AbstractType):
 class Book(SM):
     icon = "fas fa-book"
     cols_css_class = cls.COL_12MD6LG4
-    list_field_names = ("id", "title", "series", "genre", "year", "author")
-    detail_field_names = ("id", "title", "image", "book_type", "isbn", "genre", "series", "author", "publisher", "year", "language", )
+    list_field_names = ("id", "title", "series", "genre", "year", "author", "image")
+    detail_field_names = ("id", "title", "image", "book_type", "isbn", "genre", "series", "author", "publisher", "year", "language", "summary", "book_items_count", "book_items_available_count")
     queryset_names = ("items", )
+    filter_field_names = ("genre", "year", "language",  "book_type", "series", "isbn")
 
     confirm_delete = True
+    has_bookmarks = True
 
     title = models.CharField(max_length=128, serialize=cls.CLS_COL_12)
     image = ImageField(blank=True, null=True)
@@ -113,6 +124,7 @@ class Book(SM):
     publisher = models.CharField(max_length=256, blank=True, null=True)
     year = models.PositiveIntegerField()
     language = models.CharField(max_length=32, default="English")
+    summary = models.TextField(max_length=512, blank=True, null=True, serialize=cls.CLS_COL_12)
 
     def __str__(self):
         return f"{self.title} {self.year}"
@@ -120,6 +132,21 @@ class Book(SM):
     @cached_property
     def items(self):
         return BookItem.objects.filter(book=self)
+    
+    @cached_property
+    def book_items_count(self):
+        return self.items.count()
+    
+    @cached_property
+    def book_items_available_count(self):
+        return self.items.filter(available=True).count()
+
+    @classmethod
+    def get_filters_form(cls, request: WSGIRequest, _fields: Iterable = None):
+        super_form = super().get_filters_form(request, _fields)
+        class FormClass(super_form):
+            id__in = forms.MultipleChoiceField(label="ID In", choices=SM.iter_as_choices(*range(1,cls.max_id())))
+        return FormClass
 
 
 class BookItem(SM):
@@ -143,6 +170,10 @@ class BookItem(SM):
 
     def __str__(self):
         return f"{self.book} {self.code}"
+
+    @SM.get_serialized_property("id", "title", "image", "year", "isbn")
+    def serialized_book(self):
+        return self.book
     
     @property
     def list_url(self):
@@ -160,6 +191,7 @@ class Lease(SM):
     icon = "fas fa-file-contract"
     cols_css_class = cls.COL_LG6
     list_field_names = ("id", "condition", "book_item", "member",  "leased_on", "due_date", "returned")
+    serializer_list_field_names = list_field_names + ("serialized_book_item", )
     detail_field_names = list_field_names
     filter_field_names = ("condition", "book_item", "member", "leased_on", "due_date", "returned")
 
@@ -173,6 +205,10 @@ class Lease(SM):
     leased_on = models.DateField(default=datetime.date.today)
     due_date = models.DateField(blank=True)
     returned = models.DateField(blank=True, null=True)
+
+    @SM.get_serialized_property("id", "book", "code", "condition", "serialized_book")
+    def serialized_book_item(self):
+        return self.book_item
 
     def __str__(self):
         return f"{self.member} borrows {self.book_item}"
@@ -203,6 +239,7 @@ class Booking(SM):
     icon = "fas fa-calendar-day"
     list_field_names = ("id", "book", "member", "status", "expire_date")
     filter_field_names = ("book", "member", "status", "expire_date")
+    serializer_list_field_names = list_field_names + ("serialized_book", )
 
     STATUSES = ("Pending", "Accepted", "Ignored", "Expired", "Granted")
 
@@ -213,6 +250,10 @@ class Booking(SM):
     member = models.ForeignKey(Member, on_delete=models.CASCADE)
     status = models.CharField(max_length=32, choices=SM.iter_as_choices(*STATUSES), default="Pending")
     expire_date = models.DateField(blank=True)
+
+    @SM.get_serialized_property("id", "title", "image", "year", "isbn") # book_items_available_count
+    def serialized_book(self):
+        return self.book
     
     def set_expire_date(self):
         if not self.expire_date:
